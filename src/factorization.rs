@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use num::{BigUint, Integer, One, Zero};
+use num::{bigint::RandBigInt, BigUint, Integer, One, Zero};
+use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Factorization {
@@ -60,12 +61,42 @@ pub fn trial_factorization(mut n: BigUint) -> Factorization {
     Factorization::new(res)
 }
 
+#[allow(non_snake_case)]
+pub fn pollard_rho_single_factor<R: Rng>(rng: &mut R, n: BigUint) -> Option<BigUint> {
+    let s = rng.gen_biguint_range(&BigUint::zero(), &n);
+    let b = rng.gen_biguint_range(&BigUint::one(), &(n.clone() - (2 as usize)));
+
+    let mut A = s.clone();
+    let mut B = s.clone();
+    let mut g = BigUint::one();
+
+    let two = BigUint::from(2 as u8);
+
+    while g == BigUint::one() {
+        A = (A.modpow(&two, &n) + b.clone()) % n.clone();
+        let fB = (B.modpow(&two, &n) + b.clone()) % n.clone();
+        B = (fB.modpow(&two, &n) + b.clone()) % n.clone();
+        let diff = if A >= B {
+            A.clone() - B.clone()
+        } else {
+            B.clone() - A.clone()
+        };
+        g = diff.gcd(&n);
+    }
+
+    if g >= n {
+        None
+    } else {
+        Some(g)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use num::{bigint::RandBigInt, BigUint};
+    use num::{bigint::RandBigInt, BigUint, Integer};
     use rand::SeedableRng;
 
-    use crate::factorization::trial_factorization;
+    use crate::factorization::{pollard_rho_single_factor, trial_factorization};
 
     #[test]
     fn test_trial_factorization() {
@@ -82,6 +113,20 @@ mod tests {
                 rng.gen_biguint_range(&BigUint::from(2 as u8), &BigUint::from(1000000 as usize));
             let fact = trial_factorization(num.clone());
             assert_eq!(fact.n(), num);
+        }
+    }
+
+    #[test]
+    fn test_pollard_rho() {
+        let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
+        const ROUNDS: usize = 1000;
+        for _ in 0..ROUNDS {
+            let num =
+                rng.gen_biguint_range(&BigUint::from(2 as u8), &BigUint::from(1000000 as usize));
+            let factor = pollard_rho_single_factor(&mut rng, num.clone());
+            if let Some(fact) = factor {
+                assert!(num.is_multiple_of(&fact));
+            }
         }
     }
 }
