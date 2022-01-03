@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use num::{bigint::RandBigInt, BigUint, Integer, One, Zero};
 use rand::Rng;
 
+use crate::primes::miller_rabin_with_randomness;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Factorization {
     map: BTreeMap<BigUint, u32>,
@@ -35,6 +37,13 @@ impl Factorization {
             start = start * div.pow(*mult)
         }
         start
+    }
+
+    pub fn merge(mut self, fact: Factorization) -> Self {
+        for (div, mult) in fact.map {
+            *self.map.entry(div).or_insert(0) += mult;
+        }
+        self
     }
 }
 
@@ -91,12 +100,63 @@ pub fn pollard_rho_single_factor<R: Rng>(rng: &mut R, n: BigUint) -> Option<BigU
     }
 }
 
+pub fn pollard_rho_single_factor_repeat<R: Rng>(
+    rng: &mut R,
+    n: BigUint,
+    rounds: usize,
+) -> Option<BigUint> {
+    for _ in 0..rounds {
+        let partial = pollard_rho_single_factor(rng, n.clone());
+        if partial.is_some() {
+            return partial;
+        }
+    }
+    None
+}
+
+#[derive(Debug, Clone)]
+pub struct PollardRhoParameters {
+    pub trial_bound: BigUint,
+    pub rho_rounds: usize,
+    pub miller_rabin_rounds: usize,
+}
+
+pub fn pollard_rho_factorisation<R: Rng>(
+    rng: &mut R,
+    params: PollardRhoParameters,
+    n: BigUint,
+) -> Option<Factorization> {
+    if n == BigUint::zero() {
+        panic!("Zero not allowed");
+    }
+    if n == BigUint::one() {
+        return Some(Factorization::new(std::iter::empty()));
+    }
+
+    if miller_rabin_with_randomness(rng, n.clone(), params.miller_rabin_rounds).is_prime() {
+        return Some(Factorization::new(vec![(n, 1)]));
+    }
+
+    if n < params.trial_bound {
+        return Some(trial_factorization(n));
+    }
+
+    let factor = pollard_rho_single_factor_repeat(rng, n.clone(), params.rho_rounds)?;
+    let new_n = n / factor.clone();
+    Some(
+        pollard_rho_factorisation(rng, params, new_n)?
+            .merge(Factorization::new(std::iter::once((factor, 1)))),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use num::{bigint::RandBigInt, BigUint, Integer};
     use rand::SeedableRng;
 
-    use crate::factorization::{pollard_rho_single_factor, trial_factorization};
+    use crate::factorization::{pollard_rho_single_factor, trial_factorization, pollard_rho_factorisation};
+
+    use super::PollardRhoParameters;
 
     #[test]
     fn test_trial_factorization() {
@@ -117,7 +177,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pollard_rho() {
+    fn test_pollard_rho_single_factor() {
         let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
         const ROUNDS: usize = 1000;
         for _ in 0..ROUNDS {
@@ -126,6 +186,26 @@ mod tests {
             let factor = pollard_rho_single_factor(&mut rng, num.clone());
             if let Some(fact) = factor {
                 assert!(num.is_multiple_of(&fact));
+            }
+        }
+    }
+
+    #[test]
+    fn test_pollard_rho_factorisation() {
+        let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
+        let params = PollardRhoParameters {
+            trial_bound: BigUint::from(1024u32),
+            rho_rounds: 2048,
+            miller_rabin_rounds: 1000
+        };
+
+        const ROUNDS: usize = 10;
+        for _ in 0..ROUNDS {
+            let num =
+                rng.gen_biguint_range(&BigUint::from(1000000u32), &BigUint::from(10000000 as usize));
+            let factor = pollard_rho_factorisation(&mut rng, params.clone(), num.clone());
+            if let Some(fact) = factor {
+                assert_eq!(fact.n(), num);
             }
         }
     }

@@ -1,4 +1,4 @@
-use num::{bigint::RandBigInt, BigUint, Integer, One, Zero};
+use num::{bigint::RandBigInt, BigUint, Integer, One, Zero, range};
 
 use crate::preconditions::{Checked, OddCheck};
 
@@ -25,7 +25,7 @@ fn state_setup(n: BigUint) -> Result<InnerRabinState, MillerRabinResult> {
         return Err(MillerRabinResult::One);
     }
     if n == BigUint::from(2 as u8) {
-        return Err(MillerRabinResult::PossiblePrime);
+        return Err(MillerRabinResult::CertainPrime);
     }
 
     let checked_n = Odd::try_new(n.clone());
@@ -51,6 +51,7 @@ pub fn miller_rabin_step(n: BigUint, a: BigUint) -> MillerRabinResult {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MillerRabinResult {
+    CertainPrime,
     PossiblePrime,
     CompositeWitness(BigUint),
     CompositeEven,
@@ -59,9 +60,14 @@ pub enum MillerRabinResult {
 }
 
 impl MillerRabinResult {
-    fn is_composite(&self) -> bool {
+    // Maybe call possible prime
+    pub fn is_prime(&self) -> bool {
+        return !self.is_composite();
+    }
+
+    pub fn is_composite(&self) -> bool {
         match self {
-            Self::PossiblePrime => false,
+            Self::PossiblePrime | Self::CertainPrime => false,
             _ => true,
         }
     }
@@ -70,6 +76,27 @@ impl MillerRabinResult {
 pub fn miller_rabin(n: BigUint, rounds: usize) -> MillerRabinResult {
     let mut rng = rand::thread_rng();
     miller_rabin_with_randomness(&mut rng, n, rounds)
+}
+
+pub fn deterministic_miller_rabin(n: BigUint) -> MillerRabinResult {
+    let poss_state = state_setup(n);
+    if let Err(res) = poss_state {
+        return res;
+    }
+    let state = poss_state.unwrap();
+
+    deterministic_miller_rabin_inner(&state)
+}
+
+fn deterministic_miller_rabin_inner(state: &InnerRabinState) -> MillerRabinResult {
+    for a in range(BigUint::from(2u8), state.n.clone()) {
+        let partial_res = inner_miller_rabin_step(&state, a);
+        if partial_res.is_composite() {
+            return partial_res;
+        }
+    }
+
+    MillerRabinResult::CertainPrime
 }
 
 // In case not prime,  returns a witness
@@ -82,8 +109,12 @@ pub fn miller_rabin_with_randomness<R: rand::Rng>(
     if let Err(res) = poss_state {
         return res;
     }
-
     let state = poss_state.unwrap();
+
+    // If the rounds are too many for our range, use deterministic algorithm
+    if BigUint::from(rounds) > state.n.clone() - (3 as u8) {
+        return deterministic_miller_rabin_inner(&state);
+    }
 
     for _ in 0..rounds {
         let a = rng.gen_biguint_range(&BigUint::from(2 as u8), &state.n);
@@ -179,11 +210,10 @@ mod tests {
         .collect();
 
         for i in primes {
-            assert_eq!(
-                miller_rabin_with_randomness(&mut rng, i.clone(), ROUNDS),
-                MillerRabinResult::PossiblePrime,
+            assert!(
+                miller_rabin_with_randomness(&mut rng, i.clone(), ROUNDS).is_prime(),
                 "Failure on {}",
-                i
+                i, 
             )
         }
     }
