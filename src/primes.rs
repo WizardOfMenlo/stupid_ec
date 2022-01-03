@@ -1,4 +1,4 @@
-use num::{bigint::RandBigInt, BigUint, Integer, One, Zero, range};
+use num::{bigint::RandBigInt, range, BigUint, Integer, One, Zero};
 
 use crate::preconditions::{Checked, OddCheck};
 
@@ -213,7 +213,7 @@ mod tests {
             assert!(
                 miller_rabin_with_randomness(&mut rng, i.clone(), ROUNDS).is_prime(),
                 "Failure on {}",
-                i, 
+                i,
             )
         }
     }

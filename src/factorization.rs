@@ -1,3 +1,4 @@
+use core::fmt;
 use std::collections::BTreeMap;
 
 use num::{bigint::RandBigInt, BigUint, Integer, One, Zero};
@@ -17,7 +18,8 @@ impl Factorization {
             if div == BigUint::zero() {
                 panic!("Zero not allowed in factorisation");
             }
-            if div == BigUint::one() {
+
+            if div == BigUint::one() || mult == 0 {
                 continue;
             }
 
@@ -44,6 +46,27 @@ impl Factorization {
             *self.map.entry(div).or_insert(0) += mult;
         }
         self
+    }
+}
+
+fn term(div: &BigUint, mult: u32) -> String {
+    let mut s = String::new();
+    s.push_str(&div.to_string());
+    if mult > 1 {
+        s.push_str(&format!("^{}", mult))
+    }
+    s
+}
+
+impl fmt::Display for Factorization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut res = Vec::new();
+        for (div, mult) in &self.map {
+            let s = term(div, *mult);
+            res.push(s);
+        }
+        let final_str = res.join("*");
+        write!(f, "{}", final_str)
     }
 }
 
@@ -154,7 +177,9 @@ mod tests {
     use num::{bigint::RandBigInt, BigUint, Integer};
     use rand::SeedableRng;
 
-    use crate::factorization::{pollard_rho_single_factor, trial_factorization, pollard_rho_factorisation};
+    use crate::factorization::{
+        pollard_rho_factorisation, pollard_rho_single_factor, trial_factorization,
+    };
 
     use super::PollardRhoParameters;
 
@@ -196,13 +221,15 @@ mod tests {
         let params = PollardRhoParameters {
             trial_bound: BigUint::from(1024u32),
             rho_rounds: 2048,
-            miller_rabin_rounds: 1000
+            miller_rabin_rounds: 1000,
         };
 
         const ROUNDS: usize = 10;
         for _ in 0..ROUNDS {
-            let num =
-                rng.gen_biguint_range(&BigUint::from(1000000u32), &BigUint::from(10000000 as usize));
+            let num = rng.gen_biguint_range(
+                &BigUint::from(1000000u32),
+                &BigUint::from(10000000 as usize),
+            );
             let factor = pollard_rho_factorisation(&mut rng, params.clone(), num.clone());
             if let Some(fact) = factor {
                 assert_eq!(fact.n(), num);
