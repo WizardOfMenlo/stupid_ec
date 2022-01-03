@@ -1,5 +1,5 @@
 use num::BigUint;
-use stupid_ec::primes::{rewrite_n, Odd, miller_rabin};
+use stupid_ec::primes::{miller_rabin, rewrite_n, Odd};
 
 fn main() {
     dbg!(rewrite_n(Odd::new(17)));
