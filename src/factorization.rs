@@ -187,7 +187,7 @@ mod tests {
     fn test_trial_factorization() {
         let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
         for i in 1..100 {
-            let n = BigUint::from(iusize);
+            let n = BigUint::from(i as usize);
             let fact = trial_factorization(n.clone());
             assert_eq!(n, fact.n());
         }
