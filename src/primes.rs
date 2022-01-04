@@ -24,7 +24,7 @@ fn state_setup(n: BigUint) -> Result<InnerRabinState, MillerRabinResult> {
     if n == BigUint::one() {
         return Err(MillerRabinResult::One);
     }
-    if n == BigUint::from(2 as u8) {
+    if n == BigUint::from(2u8) {
         return Err(MillerRabinResult::CertainPrime);
     }
 
@@ -112,12 +112,12 @@ pub fn miller_rabin_with_randomness<R: rand::Rng>(
     let state = poss_state.unwrap();
 
     // If the rounds are too many for our range, use deterministic algorithm
-    if BigUint::from(rounds) > state.n.clone() - (3 as u8) {
+    if BigUint::from(rounds) > state.n.clone() - (3u8) {
         return deterministic_miller_rabin_inner(&state);
     }
 
     for _ in 0..rounds {
-        let a = rng.gen_biguint_range(&BigUint::from(2 as u8), &state.n);
+        let a = rng.gen_biguint_range(&BigUint::from(2u8), &state.n);
         let partial_res = inner_miller_rabin_step(&state, a);
         if partial_res.is_composite() {
             return partial_res;
@@ -139,7 +139,7 @@ impl InnerRabinState {
     fn new(n: Odd<BigUint>) -> Self {
         let (s, d) = rewrite_n(n.clone());
         let n = n.inner();
-        let n_1 = n.clone() - (1 as u8);
+        let n_1 = n.clone() - (1u8);
         InnerRabinState { n, n_1, s, d }
     }
 }
@@ -151,7 +151,7 @@ fn inner_miller_rabin_step(state: &InnerRabinState, a: BigUint) -> MillerRabinRe
     }
 
     for _ in 1..state.s {
-        x = x.modpow(&BigUint::from(2 as u8), &state.n);
+        x = x.modpow(&BigUint::from(2u8), &state.n);
         if x == state.n_1 {
             return MillerRabinResult::PossiblePrime;
         }
@@ -180,16 +180,16 @@ mod tests {
         const ROUNDS: usize = 1000;
         let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
         assert_eq!(
-            miller_rabin_with_randomness(&mut rng, BigUint::from(0 as usize), ROUNDS),
+            miller_rabin_with_randomness(&mut rng, BigUint::from(0usize), ROUNDS),
             MillerRabinResult::Zero
         );
         assert_eq!(
-            miller_rabin_with_randomness(&mut rng, BigUint::from(1 as usize), ROUNDS),
+            miller_rabin_with_randomness(&mut rng, BigUint::from(1usize), ROUNDS),
             MillerRabinResult::One
         );
 
         assert_eq!(
-            miller_rabin_with_randomness(&mut rng, BigUint::from(4 as usize), ROUNDS),
+            miller_rabin_with_randomness(&mut rng, BigUint::from(4usize), ROUNDS),
             MillerRabinResult::CompositeEven
         );
 

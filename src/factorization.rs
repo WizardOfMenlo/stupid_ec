@@ -80,13 +80,13 @@ pub fn trial_factorization(mut n: BigUint) -> Factorization {
     }
 
     let mut res = BTreeMap::new();
-    let mut s = BigUint::from(2 as u8);
+    let mut s = BigUint::from(2u8);
     while n != BigUint::one() {
         if n.is_multiple_of(&s) {
             *res.entry(s.clone()).or_insert(0) += 1;
             n = n / s.clone();
         } else {
-            s = s + (1 as u8);
+            s = s + 1u8;
         }
     }
 
@@ -96,13 +96,13 @@ pub fn trial_factorization(mut n: BigUint) -> Factorization {
 #[allow(non_snake_case)]
 pub fn pollard_rho_single_factor<R: Rng>(rng: &mut R, n: BigUint) -> Option<BigUint> {
     let s = rng.gen_biguint_range(&BigUint::zero(), &n);
-    let b = rng.gen_biguint_range(&BigUint::one(), &(n.clone() - (2 as usize)));
+    let b = rng.gen_biguint_range(&BigUint::one(), &(n.clone() - 2usize));
 
     let mut A = s.clone();
     let mut B = s.clone();
     let mut g = BigUint::one();
 
-    let two = BigUint::from(2 as u8);
+    let two = BigUint::from(2u8);
 
     while g == BigUint::one() {
         A = (A.modpow(&two, &n) + b.clone()) % n.clone();
@@ -187,7 +187,7 @@ mod tests {
     fn test_trial_factorization() {
         let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
         for i in 1..100 {
-            let n = BigUint::from(i as usize);
+            let n = BigUint::from(iusize);
             let fact = trial_factorization(n.clone());
             assert_eq!(n, fact.n());
         }
@@ -195,7 +195,7 @@ mod tests {
         const ROUNDS: usize = 1000;
         for _ in 0..ROUNDS {
             let num =
-                rng.gen_biguint_range(&BigUint::from(2 as u8), &BigUint::from(1000000 as usize));
+                rng.gen_biguint_range(&BigUint::from(2u8), &BigUint::from(1000000usize));
             let fact = trial_factorization(num.clone());
             assert_eq!(fact.n(), num);
         }
@@ -207,7 +207,7 @@ mod tests {
         const ROUNDS: usize = 1000;
         for _ in 0..ROUNDS {
             let num =
-                rng.gen_biguint_range(&BigUint::from(2 as u8), &BigUint::from(1000000 as usize));
+                rng.gen_biguint_range(&BigUint::from(2u8), &BigUint::from(1000000usize));
             let factor = pollard_rho_single_factor(&mut rng, num.clone());
             if let Some(fact) = factor {
                 assert!(num.is_multiple_of(&fact));
@@ -228,7 +228,7 @@ mod tests {
         for _ in 0..ROUNDS {
             let num = rng.gen_biguint_range(
                 &BigUint::from(1000000u32),
-                &BigUint::from(10000000 as usize),
+                &BigUint::from(10000000usize),
             );
             let factor = pollard_rho_factorisation(&mut rng, params.clone(), num.clone());
             if let Some(fact) = factor {
