@@ -1,4 +1,5 @@
 use super::Field;
+use crate::field_tests;
 use lazy_static::lazy_static;
 use num::bigint::RandBigInt;
 use num::{BigUint, One, Zero};
@@ -95,7 +96,7 @@ macro_rules! field_generate {
                 Self::new_unchecked(r.gen_biguint_range(&BigUint::zero(), &*[<$ff:upper _MODULO>]))
             }
 
-            fn invert(self) -> Option<Self> {
+            fn invert(&self) -> Option<Self> {
                 if self.el.is_zero() {
                     return None;
                 }
@@ -116,47 +117,7 @@ macro_rules! field_generate {
         }
                 }
 
-        #[cfg(test)]
-        mod tests {
-            use super::$ff;
-            use crate::fields::Field;
-            use crate::primes::miller_rabin_with_randomness;
-            use num::BigUint;
-            use rand::SeedableRng;
-
-            #[test]
-            fn obvious_things() {
-                assert!($ff::zero().is_zero());
-                assert!($ff::one().is_one());
-                assert!(!$ff::zero().is_one());
-                assert!(!$ff::one().is_zero());
-                assert!($ff::zero() != $ff::one());
-                assert!($ff::characteristic() >= BigUint::from(2u8));
-            }
-
-            #[test]
-            fn modulo_is_prime() {
-                const ROUNDS: usize = 1000;
-                let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
-                assert!(
-                    miller_rabin_with_randomness(&mut rng, $ff::characteristic(), ROUNDS)
-                        .is_prime()
-                );
-            }
-
-            #[test]
-            fn additive_identies() {
-                const NUM_ELEMENTS: usize = 1000;
-                let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
-                assert_eq!($ff::zero() + $ff::zero(), $ff::zero());
-                for _ in 0..NUM_ELEMENTS {
-                    let el = $ff::random(&mut rng);
-                    assert_eq!(el, $ff::zero() + &el);
-                    assert_eq!(el, el.clone() + $ff::zero());
-                    assert_eq!(el.clone() - el, $ff::zero());
-                }
-            }
-        }
+        field_tests!($ff);
     };
 }
 
