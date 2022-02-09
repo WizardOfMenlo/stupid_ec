@@ -194,8 +194,7 @@ mod tests {
 
         const ROUNDS: usize = 1000;
         for _ in 0..ROUNDS {
-            let num =
-                rng.gen_biguint_range(&BigUint::from(2u8), &BigUint::from(1000000usize));
+            let num = rng.gen_biguint_range(&BigUint::from(2u8), &BigUint::from(1000000usize));
             let fact = trial_factorization(num.clone());
             assert_eq!(fact.n(), num);
         }
@@ -206,8 +205,7 @@ mod tests {
         let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);
         const ROUNDS: usize = 1000;
         for _ in 0..ROUNDS {
-            let num =
-                rng.gen_biguint_range(&BigUint::from(2u8), &BigUint::from(1000000usize));
+            let num = rng.gen_biguint_range(&BigUint::from(2u8), &BigUint::from(1000000usize));
             let factor = pollard_rho_single_factor(&mut rng, num.clone());
             if let Some(fact) = factor {
                 assert!(num.is_multiple_of(&fact));
@@ -226,10 +224,8 @@ mod tests {
 
         const ROUNDS: usize = 10;
         for _ in 0..ROUNDS {
-            let num = rng.gen_biguint_range(
-                &BigUint::from(1000000u32),
-                &BigUint::from(10000000usize),
-            );
+            let num =
+                rng.gen_biguint_range(&BigUint::from(1000000u32), &BigUint::from(10000000usize));
             let factor = pollard_rho_factorisation(&mut rng, params.clone(), num.clone());
             if let Some(fact) = factor {
                 assert_eq!(fact.n(), num);

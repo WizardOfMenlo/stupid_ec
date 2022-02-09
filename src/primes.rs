@@ -1,14 +1,13 @@
 use num::{bigint::RandBigInt, range, BigUint, Integer, One, Zero};
 
-use crate::preconditions::{Checked, OddCheck};
-
-pub type Odd<I> = Checked<I, OddCheck>;
+use contracts::*;
 
 // Write n = 2^s * d + 1, returns (s, d)
 // Assumes that s < 2^64
-pub fn rewrite_n<I: Integer>(n: Odd<I>) -> (usize, I) {
+#[requires(n.is_odd(), "N must be an odd integer")]
+pub fn rewrite_n<I: Integer>(n: I) -> (usize, I) {
     let two = I::one() + I::one();
-    let mut d = n.inner() - I::one();
+    let mut d = n - I::one();
     let mut s = 0;
     while d.is_multiple_of(&two) {
         d = d.div_ceil(&two);
@@ -28,11 +27,10 @@ fn state_setup(n: BigUint) -> Result<InnerRabinState, MillerRabinResult> {
         return Err(MillerRabinResult::CertainPrime);
     }
 
-    let checked_n = Odd::try_new(n.clone());
-    if checked_n.is_none() {
+    if n.is_even() {
         return Err(MillerRabinResult::CompositeEven);
     }
-    let state = InnerRabinState::new(checked_n.unwrap());
+    let state = InnerRabinState::new(n);
     Ok(state)
 }
 
@@ -136,9 +134,8 @@ struct InnerRabinState {
 }
 
 impl InnerRabinState {
-    fn new(n: Odd<BigUint>) -> Self {
+    fn new(n: BigUint) -> Self {
         let (s, d) = rewrite_n(n.clone());
-        let n = n.inner();
         let n_1 = n.clone() - (1u8);
         InnerRabinState { n, n_1, s, d }
     }
@@ -165,14 +162,14 @@ mod tests {
     use num::BigUint;
     use rand::SeedableRng;
 
-    use crate::primes::{miller_rabin_with_randomness, rewrite_n, MillerRabinResult, Odd};
+    use crate::primes::{miller_rabin_with_randomness, rewrite_n, MillerRabinResult};
 
     #[test]
     fn representation_tests() {
-        assert_eq!((0, 1), rewrite_n(Odd::new(1)));
-        assert_eq!((2, 1), rewrite_n(Odd::new(4 + 1)));
-        assert_eq!((5, 1), rewrite_n(Odd::new(32 + 1)));
-        assert_eq!((5, 17), rewrite_n(Odd::new(32 * 17 + 1)));
+        assert_eq!((0, 1), rewrite_n(1));
+        assert_eq!((2, 1), rewrite_n(4 + 1));
+        assert_eq!((5, 1), rewrite_n(32 + 1));
+        assert_eq!((5, 17), rewrite_n(32 * 17 + 1));
     }
 
     #[test]
