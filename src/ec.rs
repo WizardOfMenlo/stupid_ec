@@ -65,7 +65,7 @@ where
             Point::Infinity => true,
             Point::Point((x, y)) => {
                 y.square() + self.a_1() * x * y + self.a_3() * y
-                    == x.square() * x + self.a_2() * x.square() + self.a_4() * x + self.a_6()
+                    == x.pow(3) + self.a_2() * x.square() + self.a_4() * x + self.a_6()
             }
         }
     }
