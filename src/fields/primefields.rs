@@ -5,7 +5,7 @@ use num::bigint::RandBigInt;
 use num::{BigUint, One, Zero};
 use paste::paste;
 use rand::RngCore;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
 // MAKE SURE TO CALL THIS WITH A PRIME NUMBER!
 #[macro_export]
@@ -43,6 +43,13 @@ macro_rules! field_generate {
             type Output = Self;
             fn add(self, rhs: &'a Self) -> Self::Output {
                 Self::new(self.el + &rhs.el)
+            }
+        }
+
+        impl AddAssign for $ff {
+            fn add_assign(&mut self, rhs: Self) {
+                self.el += rhs.el;
+                self.el %= &* [<$ff:upper _MODULO>];
             }
         }
 

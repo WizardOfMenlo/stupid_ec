@@ -1,6 +1,6 @@
 pub mod primefields;
 
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
 use num::{BigUint, Integer};
 use rand::RngCore;
@@ -20,6 +20,7 @@ pub trait Field:
     + for<'a> Sub<&'a Self, Output = Self>
     + Mul<Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
+    + AddAssign
 {
     fn zero() -> Self;
     fn one() -> Self;
@@ -59,6 +60,7 @@ pub trait Field:
         divide_and_conquer(&self, i, Self::one, |el| el.invert().unwrap(), Self::mul)
     }
 
+    // Homomorphism Z -> F, Injective if restricted on Z_{char(F)}
     fn integer_embed(i: impl Integer) -> Self {
         Self::one().scale(i)
     }
@@ -130,6 +132,8 @@ macro_rules! field_tests {
                     assert!(!$ff::one().is_zero());
                     assert!($ff::zero() != $ff::one());
                     assert!($ff::characteristic() >= BigUint::from(2u8));
+                    assert_eq!($ff::integer_embed(0), $ff::zero());
+                    assert_eq!($ff::integer_embed(1), $ff::one());
                 }
 
                 #[test]

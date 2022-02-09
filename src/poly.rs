@@ -1,3 +1,5 @@
+use std::iter::FromIterator;
+
 use crate::fields::Field;
 
 #[derive(Debug, Clone)]
@@ -34,6 +36,10 @@ where
         }
     }
 
+    pub fn zero() -> Self {
+        Self { coeff: Vec::new() }
+    }
+
     pub fn is_zero(&self) -> bool {
         self.degree().is_none()
     }
@@ -61,5 +67,81 @@ where
 
     pub fn negate(&self) -> Self {
         Self::new(self.coeff.iter().cloned().map(|a| -a))
+    }
+
+    pub fn evaluate(&self, x: F) -> F {
+        if self.degree().is_none() {
+            return F::zero();
+        }
+
+        // Horner method is nice :)
+        let n = self.degree().unwrap();
+        let mut b = self.coeff(n);
+        for i in 1..=n {
+            b = self.coeff(n - i) + b * x.clone();
+        }
+        return b;
+    }
+
+    pub fn mult(&self, other: &DensePolynomial<F>) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Self::zero();
+        }
+        let n = self.degree().unwrap();
+        let m = other.degree().unwrap();
+
+        let mut res = Vec::from_iter(std::iter::repeat(F::zero()).take(m + n));
+        for i in 0..n {
+            for j in 0..m {
+                res[i + j] += self.coeff(i) * other.coeff(j);
+            }
+        }
+
+        Self::new(res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::DensePolynomial;
+    use crate::fields::primefields::PrimeField4999;
+    use crate::fields::Field;
+
+    #[test]
+    fn basic_construction() {
+        let zero: DensePolynomial<PrimeField4999> = DensePolynomial::zero();
+        assert!(zero.is_zero());
+        assert!(zero.degree().is_none());
+        assert!(zero.coeff(42).is_zero());
+        let values = [1, 2, 3, 4, 5, 18, 0];
+        let f = DensePolynomial::new(values.iter().copied().map(PrimeField4999::integer_embed));
+        for i in 0..values.len() {
+            assert_eq!(f.coeff(i), PrimeField4999::integer_embed(values[i]));
+        }
+
+        assert_eq!(f.degree(), Some(5));
+    }
+
+    #[test]
+    fn evaluation() {
+        // x^4 + 3 x^ 2 + 2 x + 1
+        let f = DensePolynomial::new(vec![
+            PrimeField4999::integer_embed(1),
+            PrimeField4999::integer_embed(2),
+            PrimeField4999::integer_embed(3),
+            PrimeField4999::zero(),
+            PrimeField4999::one(),
+        ]);
+
+        assert_eq!(f.evaluate(PrimeField4999::zero()), PrimeField4999::one());
+        assert_eq!(
+            f.evaluate(PrimeField4999::one()),
+            PrimeField4999::integer_embed(7)
+        );
+        assert_eq!(
+            f.evaluate(PrimeField4999::integer_embed(15)),
+            PrimeField4999::integer_embed(1341)
+        );
     }
 }
