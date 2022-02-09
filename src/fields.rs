@@ -1,8 +1,10 @@
 use std::ops::{Add, Mul, Neg, Sub};
 
 use lazy_static::lazy_static;
+use num::bigint::RandBigInt;
 use num::{BigUint, Integer, One, Zero};
 use paste::paste;
+use rand::RngCore;
 
 // Approach:
 // 1. Write a Field Trait DONE
@@ -36,6 +38,8 @@ pub trait Field:
     fn invert(self) -> Option<Self>;
 
     fn characteristic() -> BigUint;
+
+    fn random(rng: &mut impl RngCore) -> Self;
 
     fn scale(&self, i: impl Integer) -> Self {
         divide_and_conquer(self, i, Self::zero, Self::neg, Self::add)
@@ -100,6 +104,7 @@ where
     }
 }
 
+// MAKE SURE TO CALL THIS WITH A PRIME NUMBER!
 #[macro_export]
 macro_rules! field_generate {
     ($ff:ident, $mod:expr) => {
@@ -116,6 +121,11 @@ macro_rules! field_generate {
         impl $ff {
             pub fn new(el: BigUint) -> Self {
                 Self { el: el % &*[<$ff:upper _MODULO>] }
+            }
+
+            // Use only when it is known to be in correct range
+            fn new_unchecked(el: BigUint) -> Self {
+                Self { el }
             }
         }
 
@@ -164,16 +174,23 @@ macro_rules! field_generate {
         impl Neg for $ff {
             type Output = Self;
             fn neg(self) -> Self {
-                Self::new(&*[<$ff:upper _MODULO>] - self.el)
+                if self.is_zero() {
+                    return Self::zero();
+                }
+                Self::new_unchecked(&*[<$ff:upper _MODULO>] - self.el)
             }
         }
 
         impl Field for $ff {
             fn zero() -> Self {
-                Self::new(BigUint::zero())
+                Self::new_unchecked(BigUint::zero())
             }
             fn one() -> Self {
-                Self::new(BigUint::one())
+                Self::new_unchecked(BigUint::one())
+            }
+
+            fn random(r: &mut impl RngCore) -> Self {
+                Self::new_unchecked(r.gen_biguint_range(&BigUint::zero(), &*[<$ff:upper _MODULO>]))
             }
 
             fn invert(self) -> Option<Self> {
