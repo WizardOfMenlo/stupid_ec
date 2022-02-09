@@ -6,6 +6,10 @@ use contracts::*;
 // Assumes that s < 2^64
 #[requires(n.is_odd(), "N must be an odd integer")]
 pub fn rewrite_n<I: Integer>(n: I) -> (usize, I) {
+    if n.is_one() {
+        return (0, I::zero());
+    }
+
     let two = I::one() + I::one();
     let mut d = n - I::one();
     let mut s = 0;
@@ -166,7 +170,7 @@ mod tests {
 
     #[test]
     fn representation_tests() {
-        assert_eq!((0, 1), rewrite_n(1));
+        assert_eq!((0, 0), rewrite_n(1));
         assert_eq!((2, 1), rewrite_n(4 + 1));
         assert_eq!((5, 1), rewrite_n(32 + 1));
         assert_eq!((5, 17), rewrite_n(32 * 17 + 1));
