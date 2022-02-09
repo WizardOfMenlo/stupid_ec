@@ -1,4 +1,4 @@
-use ff::Field;
+use crate::fields::Field;
 
 #[derive(Debug, Clone)]
 pub struct DensePolynomial<F> {
@@ -17,7 +17,7 @@ where
                 break;
             }
             let last = coeff.pop().unwrap();
-            if !last.is_zero_vartime() {
+            if !last.is_zero() {
                 coeff.push(last);
                 break;
             }
@@ -60,6 +60,6 @@ where
     }
 
     pub fn negate(&self) -> Self {
-        Self::new(self.coeff.iter().copied().map(|a| -a))
+        Self::new(self.coeff.iter().cloned().map(|a| -a))
     }
 }

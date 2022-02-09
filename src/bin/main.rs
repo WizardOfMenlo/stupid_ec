@@ -1,6 +1,6 @@
 use num::{BigInt, BigUint};
 use stupid_ec::{
-    field_new_impl::{Field, PrimeField4999},
+    fields::{Field, PrimeField4999},
     gcd::egcd,
 };
 

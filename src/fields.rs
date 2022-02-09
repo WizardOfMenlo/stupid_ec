@@ -1,48 +1,202 @@
-pub use ff::{Field, PrimeField};
+use std::ops::{Add, Mul, Neg, Sub};
 
-// One example field
-#[derive(PrimeField)]
-#[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
-#[PrimeFieldGenerator = "7"]
-#[PrimeFieldReprEndianness = "little"]
-struct Fp([u64; 4]);
+use lazy_static::lazy_static;
+use num::{BigUint, Integer, One, Zero};
+use paste::paste;
 
-// TODO: We might want this to be generic
-pub fn integer_embed<F: Field>(n: isize) -> F {
-    scale(n, F::one())
+// Approach:
+// 1. Write a Field Trait DONE
+// 2. Write a PrimeField for some fixed moduli DONE
+// 3. Make macro that generates a type for each modulo
+// 4. Extend to polyfield
+
+pub trait Field:
+    Clone
+    + PartialEq
+    + Eq
+    + Neg<Output = Self>
+    + Add<Output = Self>
+    + for<'a> Add<&'a Self, Output = Self>
+    + Sub<Output = Self>
+    + for<'a> Sub<&'a Self, Output = Self>
+    + Mul<Output = Self>
+    + for<'a> Mul<&'a Self, Output = Self>
+{
+    fn zero() -> Self;
+    fn one() -> Self;
+
+    fn is_zero(&self) -> bool {
+        self == &Self::zero()
+    }
+
+    fn is_one(&self) -> bool {
+        self == &Self::one()
+    }
+
+    fn invert(self) -> Option<Self>;
+
+    fn characteristic() -> BigUint;
+
+    fn scale(&self, i: impl Integer) -> Self {
+        divide_and_conquer(self, i, Self::zero, Self::neg, Self::add)
+    }
+
+    fn square(&self) -> Self {
+        self.pow(2u8)
+    }
+
+    fn pow(&self, i: impl Integer) -> Self {
+        divide_and_conquer(&self, i, Self::one, |el| el.invert().unwrap(), Self::mul)
+    }
+
+    fn integer_embed(i: impl Integer) -> Self {
+        Self::one().scale(i)
+    }
 }
 
-// Compute [n]x
-pub fn scale<F: Field>(n: isize, x: F) -> F {
-    if n < 0 {
-        return scale(-n, -x);
+// This is either double_and_add or square_and_multiply
+fn divide_and_conquer<F, I, F1, F2, F3>(base: &F, i: I, id: F1, inv: F2, add: F3) -> F
+where
+    F: Clone,
+    I: Integer,
+    F1: FnOnce() -> F,
+    F2: FnOnce(F) -> F,
+    F3: Copy + Fn(F, F) -> F,
+{
+    if i.is_zero() {
+        return id();
     }
 
-    if n == 0 {
-        return F::zero();
+    if i < I::zero() {
+        return divide_and_conquer_impl(&inv(base.clone()), i, id, add);
     }
 
-    scale_impl(n as usize, x)
+    divide_and_conquer_impl(base, i, id, add)
 }
 
-fn scale_impl<F: Field>(n: usize, x: F) -> F {
-    if n == 0 {
-        return F::zero();
+fn divide_and_conquer_impl<F, I, F1, F3>(base: &F, i: I, id: F1, add: F3) -> F
+where
+    F: Clone,
+    I: Integer,
+    F1: FnOnce() -> F,
+    F3: Copy + Fn(F, F) -> F,
+{
+    if i.is_zero() {
+        return id();
     }
 
-    if n == 1 {
-        return x;
+    if i.is_one() {
+        return base.clone();
     }
 
-    if n % 2 == 0 {
-        let p = scale_impl(n / 2, x);
-        p + p
+    let two = I::one() + I::one();
+
+    if i.is_even() {
+        let p = divide_and_conquer_impl(base, i / two, id, add);
+        add(p.clone(), p)
     } else {
-        let p = scale_impl((n - 1) / 2, x);
-        x + p + p
+        let p = divide_and_conquer_impl(base, (i - I::one()) / two, id, add);
+        add(base.clone(), add(p.clone(), p))
     }
 }
 
-// TODO: Apparently FF does not allow to work with characteristics ...
+#[macro_export]
+macro_rules! field_generate {
+    ($ff:ident, $mod:expr) => {
+        paste! {
+                    lazy_static! {
+                        static ref [<$ff:upper _MODULO>] : BigUint = $mod;
+                    }
 
-// Extend a prime field
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub struct $ff {
+            el: BigUint,
+        }
+
+        impl $ff {
+            pub fn new(el: BigUint) -> Self {
+                Self { el: el % &*[<$ff:upper _MODULO>] }
+            }
+        }
+
+        impl Add for $ff {
+            type Output = Self;
+            fn add(self, rhs: Self) -> Self::Output {
+                self + &rhs
+            }
+        }
+
+        impl<'a>  Add<&'a Self> for $ff {
+            type Output = Self;
+            fn add(self, rhs: &'a Self) -> Self::Output {
+                Self::new(self.el + &rhs.el)
+            }
+        }
+
+        impl Sub for $ff {
+            type Output = Self;
+            fn sub(self, rhs: Self) -> Self::Output {
+                self + (-rhs)
+            }
+        }
+
+        impl<'a>  Sub<&'a Self> for $ff {
+            type Output = Self;
+            fn sub(self, rhs: &'a Self) -> Self::Output {
+                self + (-rhs.clone())
+            }
+        }
+
+        impl Mul for $ff {
+            type Output = Self;
+            fn mul(self, rhs: Self) -> Self::Output {
+                self * &rhs
+            }
+        }
+
+        impl<'a>  Mul<&'a Self> for $ff {
+            type Output = Self;
+            fn mul(self, rhs: &'a Self) -> Self::Output {
+                Self::new(self.el * &rhs.el)
+            }
+        }
+
+        impl Neg for $ff {
+            type Output = Self;
+            fn neg(self) -> Self {
+                Self::new(&*[<$ff:upper _MODULO>] - self.el)
+            }
+        }
+
+        impl Field for $ff {
+            fn zero() -> Self {
+                Self::new(BigUint::zero())
+            }
+            fn one() -> Self {
+                Self::new(BigUint::one())
+            }
+
+            fn invert(self) -> Option<Self> {
+                if self.el.is_zero() {
+                    return None;
+                }
+
+                let res = crate::gcd::egcd_typical(self.el.clone(), [<$ff:upper _MODULO>].clone());
+                assert!(res.d.is_one());
+                // -x a + n b
+                if res.negative {
+                    Some(Self::new(&*[<$ff:upper _MODULO>] - res.a_coeff))
+                } else {
+                    Some(Self::new(res.a_coeff))
+                }
+            }
+
+            fn characteristic() -> BigUint {
+                return [<$ff:upper _MODULO>].clone();
+            }
+        }
+                }
+    };
+}
+
+field_generate!(PrimeField4999, BigUint::from(4999u32));
