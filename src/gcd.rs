@@ -51,39 +51,40 @@ fn egcd_impl(a: BigUint, n: BigUint) -> GCDResult {
 #[requires(!n.is_multiple_of(&a))]
 pub(crate) fn egcd_typical(a: BigUint, n: BigUint) -> GCDResult {
     let mut qs = Vec::new();
-    // TODO: Here as well, we only need the last two elements
-    let mut rs = vec![n, a];
+    let mut r_i_1 = n;
+    let mut r_i = a;
 
     loop {
-        let curr_len = rs.len();
-        let r_i = &rs[curr_len - 1];
-        let r_i_1 = &rs[curr_len - 2];
-        let (q_i, r_i_p_1) = r_i_1.div_mod_floor(r_i);
+        let (q_i, r_i_p_1) = r_i_1.div_mod_floor(&r_i);
         if r_i_p_1.is_zero() {
             break;
         }
         qs.push(q_i);
-        rs.push(r_i_p_1);
+        r_i_1 = r_i;
+        r_i = r_i_p_1;
     }
 
-    let ell = rs.len() - 1;
+    let ell = qs.len() + 1;
 
     // The gcd
-    let d = rs[ell].clone();
+    let d = r_i;
 
-    // TODO: In fact we don't need the whole vector, we can just use the last
-    let mut cs = vec![BigUint::one()];
-    let mut ds = vec![qs[ell - 2].clone()];
+    let mut current_c = BigUint::one();
+    let mut current_d = qs[ell - 2].clone();
 
-    for i in 1..=(ell - 2) {
-        cs.push(ds[i - 1].clone());
-        ds.push(cs[i - 1].clone() + ds[i - 1].clone() * qs[ell - 2 - i].clone());
+    // We don't actually need the last element
+    qs.pop();
+
+    for _ in 0..(ell - 2) {
+        let old_c = current_c.clone();
+        current_c = current_d.clone();
+        current_d = old_c + current_d * qs.pop().unwrap();
     }
 
     GCDResult {
         d,
-        a_coeff: ds.pop().unwrap(),
-        n_coeff: cs.pop().unwrap(),
+        a_coeff: current_d,
+        n_coeff: current_c,
         negative: ell % 2 == 0,
     }
 }
