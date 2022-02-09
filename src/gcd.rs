@@ -15,7 +15,7 @@ pub struct GCDResult {
     pub negative: bool,
 }
 
-pub fn extended_gcd(a: BigUint, b: BigUint) -> GCDResult {
+pub fn egcd(a: BigUint, b: BigUint) -> GCDResult {
     if a <= b {
         egcd_impl(a, b)
     } else {
@@ -43,12 +43,13 @@ fn egcd_impl(a: BigUint, n: BigUint) -> GCDResult {
         };
     }
 
-    extended_gcd_unchecked(a, n)
+    egcd_typical(a, n)
 }
 
+#[requires(!a.is_zero())]
 #[requires(a < n, "a must be smaller than n")]
 #[requires(!n.is_multiple_of(&a))]
-pub(crate) fn extended_gcd_unchecked(a: BigUint, n: BigUint) -> GCDResult {
+pub(crate) fn egcd_typical(a: BigUint, n: BigUint) -> GCDResult {
     let mut qs = Vec::new();
     // TODO: Here as well, we only need the last two elements
     let mut rs = vec![n, a];
@@ -91,10 +92,10 @@ pub(crate) fn extended_gcd_unchecked(a: BigUint, n: BigUint) -> GCDResult {
 mod tests {
     use num::{BigInt, BigUint, Integer, Zero};
 
-    use super::extended_gcd;
+    use super::egcd;
 
     fn check_coefficients(mut a: BigUint, mut n: BigUint) {
-        let res = extended_gcd(a.clone(), n.clone());
+        let res = egcd(a.clone(), n.clone());
         assert_eq!(a.gcd(&n), res.d);
 
         // FIXME: Currently a bug in num-integer makes this panics if d == 0

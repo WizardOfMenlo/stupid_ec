@@ -2,10 +2,11 @@ use std::ops::{Add, Mul};
 
 use lazy_static::lazy_static;
 use num::{BigUint, Integer, One, Zero};
+use paste::paste;
 
 // Approach:
-// 1. Write a Field Trait
-// 2. Write a PrimeField for some fixed moduli
+// 1. Write a Field Trait DONE
+// 2. Write a PrimeField for some fixed moduli DONE
 // 3. Make macro that generates a type for each modulo
 // 4. Extend to polyfield
 
@@ -76,63 +77,72 @@ where
     }
 }
 
-lazy_static! {
-    static ref MODULO: BigUint = BigUint::from(4999u32);
-}
+#[macro_export]
+macro_rules! field_generate {
+    ($ff:ident, $mod:expr) => {
+        paste! {
+                    lazy_static! {
+                        static ref [<$ff:upper _MODULO>] : BigUint = $mod;
+                    }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PrimeField {
-    el: BigUint,
-}
-
-impl PrimeField {
-    pub fn new(el: BigUint) -> Self {
-        PrimeField { el: el % &*MODULO }
-    }
-}
-
-impl Add for PrimeField {
-    type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output {
-        PrimeField::new(self.el + rhs.el)
-    }
-}
-
-impl Mul for PrimeField {
-    type Output = Self;
-    fn mul(self, rhs: Self) -> Self::Output {
-        PrimeField::new(self.el * rhs.el)
-    }
-}
-
-impl Field for PrimeField {
-    fn zero() -> Self {
-        PrimeField::new(BigUint::zero())
-    }
-    fn one() -> Self {
-        PrimeField::new(BigUint::one())
-    }
-
-    fn negate(self) -> Self {
-        PrimeField::new(&*MODULO - self.el)
-    }
-
-    fn invert(self) -> Option<Self> {
-        if self.el.is_zero() {
-            return None;
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub struct $ff {
+            el: BigUint,
         }
 
-        let res = crate::gcd::extended_gcd_unchecked(self.el.clone(), MODULO.clone());
-        assert!(res.d.is_one());
-        // -x a + n b
-        if res.negative {
-            Some(PrimeField::new(&*MODULO - res.a_coeff))
-        } else {
-            Some(PrimeField::new(res.a_coeff))
+        impl $ff {
+            pub fn new(el: BigUint) -> Self {
+                Self { el: el % &*[<$ff:upper _MODULO>] }
+            }
         }
-    }
 
-    fn characteristic() -> BigUint {
-        return MODULO.clone();
-    }
+        impl Add for $ff {
+            type Output = Self;
+            fn add(self, rhs: Self) -> Self::Output {
+                Self::new(self.el + rhs.el)
+            }
+        }
+
+        impl Mul for $ff {
+            type Output = Self;
+            fn mul(self, rhs: Self) -> Self::Output {
+                Self::new(self.el * rhs.el)
+            }
+        }
+
+        impl Field for $ff {
+            fn zero() -> Self {
+                Self::new(BigUint::zero())
+            }
+            fn one() -> Self {
+                Self::new(BigUint::one())
+            }
+
+            fn negate(self) -> Self {
+                Self::new(&*[<$ff:upper _MODULO>] - self.el)
+            }
+
+            fn invert(self) -> Option<Self> {
+                if self.el.is_zero() {
+                    return None;
+                }
+
+                let res = crate::gcd::egcd_typical(self.el.clone(), [<$ff:upper _MODULO>].clone());
+                assert!(res.d.is_one());
+                // -x a + n b
+                if res.negative {
+                    Some(Self::new(&*[<$ff:upper _MODULO>] - res.a_coeff))
+                } else {
+                    Some(Self::new(res.a_coeff))
+                }
+            }
+
+            fn characteristic() -> BigUint {
+                return [<$ff:upper _MODULO>].clone();
+            }
+        }
+                }
+    };
 }
+
+field_generate!(PrimeField4999, BigUint::from(4999u32));
