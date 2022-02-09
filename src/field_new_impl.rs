@@ -1,6 +1,5 @@
 use std::ops::{Add, Mul};
 
-use contracts::requires;
 use lazy_static::lazy_static;
 use num::{BigUint, Integer, One, Zero};
 
@@ -10,7 +9,7 @@ use num::{BigUint, Integer, One, Zero};
 // 3. Make macro that generates a type for each modulo
 // 4. Extend to polyfield
 
-trait Field: Clone + PartialEq + Eq + Add<Output = Self> + Mul<Output = Self> {
+pub trait Field: Clone + PartialEq + Eq + Add<Output = Self> + Mul<Output = Self> {
     fn zero() -> Self;
     fn one() -> Self;
 
@@ -87,7 +86,7 @@ pub struct PrimeField {
 }
 
 impl PrimeField {
-    fn new(el: BigUint) -> Self {
+    pub fn new(el: BigUint) -> Self {
         PrimeField { el: el % &*MODULO }
     }
 }
@@ -123,70 +122,17 @@ impl Field for PrimeField {
             return None;
         }
 
-        let res = extended_gcd(self.el.clone(), MODULO.clone());
+        let res = crate::gcd::extended_gcd_unchecked(self.el.clone(), MODULO.clone());
         assert!(res.d.is_one());
-        // x a - n b = 1
+        // -x a + n b
         if res.negative {
-            Some(PrimeField::new(res.a_coeff))
-        }
-        // - x a + n b = 1
-        else {
             Some(PrimeField::new(&*MODULO - res.a_coeff))
+        } else {
+            Some(PrimeField::new(res.a_coeff))
         }
     }
 
     fn characteristic() -> BigUint {
         return MODULO.clone();
-    }
-}
-
-// TODO: Must optimize a lot
-#[derive(Debug)]
-pub struct GCDResult {
-    pub d: BigUint,
-    pub a_coeff: BigUint,
-    pub n_coeff: BigUint,
-    // False => -x a + n b = d
-    // True => x a - n b = d
-    pub negative: bool,
-}
-
-#[requires(a < n, "a must be smaller than n")]
-pub fn extended_gcd(a: BigUint, n: BigUint) -> GCDResult {
-    let mut qs = Vec::new();
-    // TODO: Here as well, we only need the last two elements
-    let mut rs = vec![n, a];
-
-    loop {
-        let curr_len = rs.len();
-        let r_i = &rs[curr_len - 1];
-        let r_i_1 = &rs[curr_len - 2];
-        let (q_i, r_i_p_1) = r_i_1.div_mod_floor(r_i);
-        if r_i_p_1.is_zero() {
-            break;
-        }
-        qs.push(q_i);
-        rs.push(r_i_p_1);
-    }
-
-    let ell = rs.len() - 1;
-
-    // The gcd
-    let d = rs[ell].clone();
-
-    // TODO: In fact we don't need the whole vector, we can just use the last
-    let mut cs = vec![BigUint::one()];
-    let mut ds = vec![qs[ell - 2].clone()];
-
-    for i in 1..=(ell - 2) {
-        cs.push(ds[i - 1].clone());
-        ds.push(cs[i - 1].clone() + ds[i - 1].clone() * qs[ell - 2 - i].clone());
-    }
-
-    GCDResult {
-        d,
-        a_coeff: ds.pop().unwrap(),
-        n_coeff: cs.pop().unwrap(),
-        negative: ell % 2 == 0,
     }
 }
