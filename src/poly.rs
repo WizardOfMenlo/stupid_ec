@@ -1,5 +1,7 @@
 use std::iter::FromIterator;
 
+use num::Integer;
+
 use crate::fields::Field;
 use std::fmt;
 
@@ -26,6 +28,10 @@ where
             }
         }
         Self { coeff }
+    }
+
+    pub fn new_integers(it: impl IntoIterator<Item = impl Integer>) -> Self {
+        Self::new(it.into_iter().map(F::integer_embed))
     }
 
     // Use None to signify the zero polynomial (degree -\infty)
@@ -112,7 +118,7 @@ where
 
         let c = modulo.coeff(d);
 
-        while r.degree().unwrap_or(0) >= d {
+        while r.degree().unwrap_or(0) > d {
             let deg_r = r.degree().unwrap_or(0);
             let s_coeff = r.coeff(deg_r) * c.invert().unwrap();
             let s = DensePolynomial::new(
@@ -173,7 +179,7 @@ mod tests {
         assert!(zero.degree().is_none());
         assert!(zero.coeff(42).is_zero());
         let values = [1, 2, 3, 4, 5, 18, 0];
-        let f = DensePolynomial::new(values.iter().copied().map(PrimeField4999::integer_embed));
+        let f: DensePolynomial<PrimeField4999> = DensePolynomial::new_integers(values);
         for i in 0..values.len() {
             assert_eq!(f.coeff(i), PrimeField4999::integer_embed(values[i]));
         }

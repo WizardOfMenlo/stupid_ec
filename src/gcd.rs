@@ -48,8 +48,17 @@ fn egcd_impl(a: BigUint, n: BigUint) -> GCDResult {
 
 #[requires(!a.is_zero())]
 #[requires(a < n, "a must be smaller than n")]
-#[requires(!n.is_multiple_of(&a))]
+#[requires(!n.is_multiple_of(&a) || a.is_one())]
 pub(crate) fn egcd_typical(a: BigUint, n: BigUint) -> GCDResult {
+    if a.is_one() {
+        return GCDResult {
+            d: a,
+            a_coeff: BigUint::one(),
+            n_coeff: BigUint::zero(),
+            negative: false,
+        };
+    }
+
     let mut qs = Vec::new();
     let mut r_i_1 = n;
     let mut r_i = a;

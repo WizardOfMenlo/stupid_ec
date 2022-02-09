@@ -80,7 +80,7 @@ where
     }
 
     if i < I::zero() {
-        return divide_and_conquer_impl(&inv(base.clone()), i, id, add);
+        return divide_and_conquer_impl(&inv(base.clone()), I::zero() - i, id, add);
     }
 
     divide_and_conquer_impl(base, i, id, add)

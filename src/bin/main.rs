@@ -25,11 +25,11 @@ fn main() {
 
     println!(
         "{}",
-        DensePolynomial::<PrimeField4999>::new(
-            vec![1, 2, 3, 4, 5]
-                .iter()
-                .cloned()
-                .map(PrimeField4999::integer_embed)
-        )
+        DensePolynomial::<PrimeField4999>::new_integers(vec![1, 2, 3, 4, 5])
     );
+
+    let first = DensePolynomial::<PrimeField4999>::new_integers(vec![-4, 0, -2, 1]);
+    let second = DensePolynomial::<PrimeField4999>::new_integers(vec![-3, 1]);
+    let (q, r) = first.div_quotient_rem(&second);
+    println!("q := {}, r := {}", q, r);
 }
