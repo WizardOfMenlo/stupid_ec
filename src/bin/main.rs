@@ -2,6 +2,7 @@ use num::{BigInt, BigUint};
 use stupid_ec::{
     fields::{primefields::PrimeField4999, Field},
     gcd::egcd,
+    poly::DensePolynomial,
 };
 
 fn main() {
@@ -21,4 +22,14 @@ fn main() {
     dbg!(PrimeField4999::one().scale(12));
     dbg!(el.clone().invert().unwrap());
     dbg!(el.clone() * el.invert().unwrap());
+
+    println!(
+        "{}",
+        DensePolynomial::<PrimeField4999>::new(
+            vec![1, 2, 3, 4, 5]
+                .iter()
+                .cloned()
+                .map(PrimeField4999::integer_embed)
+        )
+    );
 }

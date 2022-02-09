@@ -1,8 +1,9 @@
 use std::iter::FromIterator;
 
 use crate::fields::Field;
+use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DensePolynomial<F> {
     coeff: Vec<F>,
 }
@@ -98,6 +99,63 @@ where
         }
 
         Self::new(res)
+    }
+
+    pub fn div_quotient_rem(&self, modulo: &DensePolynomial<F>) -> (Self, Self) {
+        if modulo.is_zero() {
+            panic!("Cannot reduce by the zero polynomial");
+        }
+        let d = modulo.degree().unwrap();
+
+        let mut q = Self::zero();
+        let mut r = self.clone();
+
+        let c = modulo.coeff(d);
+
+        while r.degree().unwrap_or(0) >= d {
+            let deg_r = r.degree().unwrap_or(0);
+            let s_coeff = r.coeff(deg_r) * c.invert().unwrap();
+            let s = DensePolynomial::new(
+                std::iter::repeat(F::zero())
+                    .take(deg_r - d)
+                    .chain(std::iter::once(s_coeff)),
+            );
+            q = q.add(&s);
+            r = r.negate().add(&s.mult(&modulo));
+        }
+
+        (q, r)
+    }
+}
+
+impl<F> fmt::Display for DensePolynomial<F>
+where
+    F: Field + fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_zero() {
+            return write!(f, "{}", F::zero());
+        }
+        let n = self.degree().unwrap();
+        for i in (0..=n).rev() {
+            let coeff = self.coeff(i);
+            if !coeff.is_zero() {
+                write!(
+                    f,
+                    "{}{}{}",
+                    if i == n { "" } else { " + " },
+                    coeff,
+                    if i == 0 {
+                        String::new()
+                    } else if i == 1 {
+                        " x".to_string()
+                    } else {
+                        format!(" x^{}", i)
+                    }
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 

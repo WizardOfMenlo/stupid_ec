@@ -5,6 +5,7 @@ use num::bigint::RandBigInt;
 use num::{BigUint, One, Zero};
 use paste::paste;
 use rand::RngCore;
+use std::fmt;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 
 // MAKE SURE TO CALL THIS WITH A PRIME NUMBER!
@@ -88,6 +89,13 @@ macro_rules! field_generate {
                     return Self::zero();
                 }
                 Self::new_unchecked(&*[<$ff:upper _MODULO>] - self.el)
+            }
+        }
+
+        impl fmt::Display for $ff {
+
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}", self.el)
             }
         }
 
