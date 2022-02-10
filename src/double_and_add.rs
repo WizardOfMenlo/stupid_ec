@@ -1,5 +1,6 @@
 use num::{Integer, Unsigned};
 
+#[derive(Debug, Clone)]
 pub(crate) struct PositiveDoubleAndAddState<R, F1, F2> {
     pub(crate) base: R,
     pub(crate) operation: F1,
@@ -43,6 +44,7 @@ where
     acc
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct PossiblyNegativeDoubleAndAddState<R, F1, F2, F3> {
     pub(crate) base: R,
     pub(crate) operation: F1,
@@ -91,4 +93,38 @@ where
     }
 
     acc
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::double_and_add::positive_double_and_add;
+
+    use super::PositiveDoubleAndAddState;
+    use num::{BigUint, One, Zero};
+
+    #[test]
+    fn test_scale() {
+        let a = BigUint::from(10u8);
+        let state = PositiveDoubleAndAddState {
+            base: a.clone(),
+            operation: |a: BigUint, b: BigUint| a + b,
+            identity: BigUint::zero,
+        };
+        for i in 0..1024u32 {
+            assert_eq!(a.clone() * i, positive_double_and_add(state.clone(), i));
+        }
+    }
+
+    #[test]
+    fn test_pow() {
+        let a = BigUint::from(10u8);
+        let state = PositiveDoubleAndAddState {
+            base: a.clone(),
+            operation: |a: BigUint, b: BigUint| a * b,
+            identity: BigUint::one,
+        };
+        for i in 0..10 {
+            assert_eq!(a.pow(i), positive_double_and_add(state.clone(), i));
+        }
+    }
 }
