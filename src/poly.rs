@@ -228,7 +228,7 @@ mod tests {
 
     use super::DensePolynomial;
     use crate::fields::primefields::PrimeField4999;
-    use crate::fields::Field;
+    use crate::rings::Ring;
 
     #[test]
     fn basic_construction() {

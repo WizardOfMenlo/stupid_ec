@@ -3,6 +3,7 @@ use stupid_ec::{
     fields::{primefields::PrimeField4999, Field},
     gcd::egcd,
     poly::DensePolynomial,
+    rings::Ring,
 };
 
 fn main() {

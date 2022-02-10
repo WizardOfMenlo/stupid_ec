@@ -5,3 +5,4 @@ pub mod fields;
 pub mod gcd;
 pub mod poly;
 pub mod primes;
+pub mod rings;
