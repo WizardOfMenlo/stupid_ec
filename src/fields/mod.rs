@@ -1,6 +1,6 @@
 pub mod primefields;
 
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
 
 use num::{BigUint, Integer};
 use rand::RngCore;
@@ -8,6 +8,8 @@ use rand::RngCore;
 // This is actually need for the macro for tests to compile
 #[allow(unused_imports)]
 use paste::paste;
+
+use crate::double_and_add::{possibly_negative_double_and_add, PossiblyNegativeDoubleAndAddState};
 
 pub trait Field:
     Clone
@@ -21,6 +23,7 @@ pub trait Field:
     + Mul<Output = Self>
     + for<'a> Mul<&'a Self, Output = Self>
     + AddAssign
+    + MulAssign
 {
     fn zero() -> Self;
     fn one() -> Self;
@@ -49,7 +52,14 @@ pub trait Field:
     }
 
     fn scale(&self, i: impl Integer) -> Self {
-        divide_and_conquer(self, i, Self::zero, Self::neg, Self::add)
+        let state = PossiblyNegativeDoubleAndAddState {
+            base: self.clone(),
+            operation: Self::add,
+            identity: Self::zero,
+            inversion: Self::neg,
+        };
+
+        possibly_negative_double_and_add(state, i)
     }
 
     fn square(&self) -> Self {
@@ -57,58 +67,23 @@ pub trait Field:
     }
 
     fn pow(&self, i: impl Integer) -> Self {
-        divide_and_conquer(&self, i, Self::one, |el| el.invert().unwrap(), Self::mul)
+        if self.is_zero() {
+            return Self::zero();
+        }
+
+        let state = PossiblyNegativeDoubleAndAddState {
+            base: self.clone(),
+            operation: Self::mul,
+            identity: Self::one,
+            inversion: |el: Self| el.invert().unwrap(),
+        };
+
+        possibly_negative_double_and_add(state, i)
     }
 
     // Homomorphism Z -> F, Injective if restricted on Z_{char(F)}
     fn integer_embed(i: impl Integer) -> Self {
         Self::one().scale(i)
-    }
-}
-
-// This is either double_and_add or square_and_multiply
-fn divide_and_conquer<F, I, F1, F2, F3>(base: &F, i: I, id: F1, inv: F2, add: F3) -> F
-where
-    F: Clone,
-    I: Integer,
-    F1: FnOnce() -> F,
-    F2: FnOnce(F) -> F,
-    F3: Copy + Fn(F, F) -> F,
-{
-    if i.is_zero() {
-        return id();
-    }
-
-    if i < I::zero() {
-        return divide_and_conquer_impl(&inv(base.clone()), I::zero() - i, id, add);
-    }
-
-    divide_and_conquer_impl(base, i, id, add)
-}
-
-fn divide_and_conquer_impl<F, I, F1, F3>(base: &F, i: I, id: F1, add: F3) -> F
-where
-    F: Clone,
-    I: Integer,
-    F1: FnOnce() -> F,
-    F3: Copy + Fn(F, F) -> F,
-{
-    if i.is_zero() {
-        return id();
-    }
-
-    if i.is_one() {
-        return base.clone();
-    }
-
-    let two = I::one() + I::one();
-
-    if i.is_even() {
-        let p = divide_and_conquer_impl(base, i / two, id, add);
-        add(p.clone(), p)
-    } else {
-        let p = divide_and_conquer_impl(base, (i - I::one()) / two, id, add);
-        add(base.clone(), add(p.clone(), p))
     }
 }
 

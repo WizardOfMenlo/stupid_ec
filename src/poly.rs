@@ -1,4 +1,4 @@
-use std::iter::FromIterator;
+use std::{collections::HashMap, iter::FromIterator};
 
 use num::Integer;
 
@@ -34,6 +34,39 @@ where
         Self::new(it.into_iter().map(F::integer_embed))
     }
 
+    pub fn new_degree_list_integers(
+        degree_list: impl IntoIterator<Item = (usize, impl Integer)>,
+    ) -> Self {
+        Self::new_degree_list(
+            degree_list
+                .into_iter()
+                .map(|(k, v)| (k, F::integer_embed(v))),
+        )
+    }
+
+    pub fn new_degree_list(degree_list: impl IntoIterator<Item = (usize, F)>) -> Self {
+        let degree_list: HashMap<_, _> = degree_list.into_iter().collect();
+
+        let max_degree = degree_list
+            .iter()
+            .filter(|(_, v)| !v.is_zero())
+            .map(|(k, _)| k)
+            .max();
+
+        if max_degree.is_none() || *max_degree.unwrap() == 0 {
+            return Self::zero();
+        }
+
+        let max_degree = max_degree.unwrap();
+
+        let mut backing = vec![F::zero(); max_degree + 1];
+        for (k, v) in degree_list.iter().filter(|(_, v)| !v.is_zero()) {
+            backing[*k] = v.clone();
+        }
+
+        Self::new(backing)
+    }
+
     // Use None to signify the zero polynomial (degree -\infty)
     pub fn degree(&self) -> Option<usize> {
         if self.coeff.len() == 0 {
@@ -55,6 +88,10 @@ where
         self.coeff.get(pos).cloned().unwrap_or(F::zero())
     }
 
+    pub fn leading(&self) -> F {
+        self.degree().map(|d| self.coeff(d)).unwrap_or(F::zero())
+    }
+
     pub fn add(&self, other: &DensePolynomial<F>) -> Self {
         if self.is_zero() {
             return other.clone();
@@ -74,6 +111,15 @@ where
 
     pub fn negate(&self) -> Self {
         Self::new(self.coeff.iter().cloned().map(|a| -a))
+    }
+
+    // Equivalent to multiplying by x^d
+    pub fn shift(&self, d: usize) -> Self {
+        Self::new(
+            std::iter::repeat(F::zero())
+                .take(d)
+                .chain(self.coeff.iter().cloned()),
+        )
     }
 
     pub fn evaluate(&self, x: F) -> F {
@@ -107,30 +153,38 @@ where
         Self::new(res)
     }
 
-    pub fn div_quotient_rem(&self, modulo: &DensePolynomial<F>) -> (Self, Self) {
-        if modulo.is_zero() {
+    pub fn div_quotient_rem(&self, divisor: &DensePolynomial<F>) -> (Self, Self) {
+        if divisor.is_zero() {
             panic!("Cannot reduce by the zero polynomial");
         }
-        let d = modulo.degree().unwrap();
-
-        let mut q = Self::zero();
-        let mut r = self.clone();
-
-        let c = modulo.coeff(d);
-
-        while r.degree().unwrap_or(0) > d {
-            let deg_r = r.degree().unwrap_or(0);
-            let s_coeff = r.coeff(deg_r) * c.invert().unwrap();
-            let s = DensePolynomial::new(
-                std::iter::repeat(F::zero())
-                    .take(deg_r - d)
-                    .chain(std::iter::once(s_coeff)),
-            );
-            q = q.add(&s);
-            r = r.negate().add(&s.mult(&modulo));
+        if self.is_zero() {
+            return (Self::zero(), Self::zero());
         }
 
-        (q, r)
+        let num_deg = self.coeff.len();
+        let den_deg = divisor.coeff.len();
+
+        let mut out: Vec<_> = self.coeff.iter().rev().cloned().collect();
+        let divisor: Vec<_> = divisor.coeff.iter().rev().cloned().collect();
+
+        let normalizer = divisor[0].invert().unwrap();
+        for i in 0..(num_deg - den_deg + 1) {
+            out[i] *= normalizer.clone();
+            let coeff = out[i].clone();
+            if !coeff.is_zero() {
+                for j in 1..den_deg {
+                    out[i + j] += -divisor[j].clone() * coeff.clone();
+                }
+            }
+        }
+
+        let out: Vec<_> = out.into_iter().rev().collect();
+        let separator = den_deg - 1;
+
+        (
+            Self::new(out[separator..].iter().cloned()),
+            Self::new(out[..separator].iter().cloned()),
+        )
     }
 }
 
@@ -150,7 +204,11 @@ where
                     f,
                     "{}{}{}",
                     if i == n { "" } else { " + " },
-                    coeff,
+                    if !coeff.is_one() || i == 0 {
+                        format!("{}", coeff)
+                    } else {
+                        String::new()
+                    },
                     if i == 0 {
                         String::new()
                     } else if i == 1 {
@@ -180,23 +238,28 @@ mod tests {
         assert!(zero.coeff(42).is_zero());
         let values = [1, 2, 3, 4, 5, 18, 0];
         let f: DensePolynomial<PrimeField4999> = DensePolynomial::new_integers(values);
+        let g: DensePolynomial<PrimeField4999> = DensePolynomial::new_degree_list_integers(vec![
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),
+            (4, 5),
+            (5, 18),
+        ]);
         for i in 0..values.len() {
             assert_eq!(f.coeff(i), PrimeField4999::integer_embed(values[i]));
+            assert_eq!(g.coeff(i), PrimeField4999::integer_embed(values[i]));
         }
 
         assert_eq!(f.degree(), Some(5));
+        assert_eq!(g.degree(), Some(5));
+        assert_eq!(f, g);
     }
 
     #[test]
     fn evaluation() {
         // x^4 + 3 x^ 2 + 2 x + 1
-        let f = DensePolynomial::new(vec![
-            PrimeField4999::integer_embed(1),
-            PrimeField4999::integer_embed(2),
-            PrimeField4999::integer_embed(3),
-            PrimeField4999::zero(),
-            PrimeField4999::one(),
-        ]);
+        let f = DensePolynomial::new_integers(vec![1, 2, 3, 0, 1]);
 
         assert_eq!(f.evaluate(PrimeField4999::zero()), PrimeField4999::one());
         assert_eq!(
@@ -207,5 +270,17 @@ mod tests {
             f.evaluate(PrimeField4999::integer_embed(15)),
             PrimeField4999::integer_embed(1341)
         );
+    }
+
+    #[test]
+    fn shift() {
+        // x^4 + 1
+        let f: DensePolynomial<PrimeField4999> =
+            DensePolynomial::new_degree_list_integers(vec![(0, 1), (4, 1)]);
+
+        // x^7 + x^3
+        let g = DensePolynomial::new_degree_list_integers(vec![(3, 1), (7, 1)]);
+
+        assert_eq!(f.shift(3), g);
     }
 }

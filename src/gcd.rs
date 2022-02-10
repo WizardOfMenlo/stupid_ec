@@ -1,7 +1,6 @@
 use contracts::requires;
 use num::{BigUint, Integer, One, Zero};
 
-// TODO: Must optimize a lot
 #[derive(Debug)]
 pub struct GCDResult {
     pub d: BigUint,
@@ -48,17 +47,8 @@ fn egcd_impl(a: BigUint, n: BigUint) -> GCDResult {
 
 #[requires(!a.is_zero())]
 #[requires(a < n, "a must be smaller than n")]
-#[requires(!n.is_multiple_of(&a) || a.is_one())]
+#[requires(!n.is_multiple_of(&a))]
 pub(crate) fn egcd_typical(a: BigUint, n: BigUint) -> GCDResult {
-    if a.is_one() {
-        return GCDResult {
-            d: a,
-            a_coeff: BigUint::one(),
-            n_coeff: BigUint::zero(),
-            negative: false,
-        };
-    }
-
     let mut qs = Vec::new();
     let mut r_i_1 = n;
     let mut r_i = a;

@@ -6,7 +6,7 @@ use num::{BigUint, One, Zero};
 use paste::paste;
 use rand::RngCore;
 use std::fmt;
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub};
 
 // MAKE SURE TO CALL THIS WITH A PRIME NUMBER!
 #[macro_export]
@@ -75,6 +75,13 @@ macro_rules! field_generate {
             }
         }
 
+        impl MulAssign for $ff {
+            fn mul_assign(&mut self, rhs: Self) {
+                self.el *= rhs.el;
+                self.el %= &* [<$ff:upper _MODULO>];
+            }
+        }
+
         impl<'a>  Mul<&'a Self> for $ff {
             type Output = Self;
             fn mul(self, rhs: &'a Self) -> Self::Output {
@@ -114,6 +121,10 @@ macro_rules! field_generate {
             fn invert(&self) -> Option<Self> {
                 if self.el.is_zero() {
                     return None;
+                }
+
+                if self.el.is_one() {
+                    return Some(Self::one());
                 }
 
                 let res = crate::gcd::egcd_typical(self.el.clone(), [<$ff:upper _MODULO>].clone());

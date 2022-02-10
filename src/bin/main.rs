@@ -31,5 +31,18 @@ fn main() {
     let first = DensePolynomial::<PrimeField4999>::new_integers(vec![-4, 0, -2, 1]);
     let second = DensePolynomial::<PrimeField4999>::new_integers(vec![-3, 1]);
     let (q, r) = first.div_quotient_rem(&second);
+    println!("num := {first}, den = {second}");
+    println!("q := {}, r := {}", q, r);
+
+    let first = DensePolynomial::<PrimeField4999>::new_degree_list_integers(vec![
+        (8, 1),
+        (5, 1),
+        (2, 1),
+        (0, 1),
+    ]);
+    let second =
+        DensePolynomial::<PrimeField4999>::new_degree_list_integers(vec![(4, 32), (2, 1), (0, 1)]);
+    let (q, r) = first.div_quotient_rem(&second);
+    println!("num := {first}, den = {second}");
     println!("q := {}, r := {}", q, r);
 }

@@ -1,3 +1,4 @@
+pub(crate) mod double_and_add;
 pub mod ec;
 pub mod factorization;
 pub mod fields;
