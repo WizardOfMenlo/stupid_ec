@@ -45,6 +45,13 @@ macro_rules! field_tests {
                 use rand::SeedableRng;
 
                 #[test]
+                fn zero_is_not_one() {
+                    assert!(!$ff::zero().is_one());
+                    assert!(!$ff::one().is_zero());
+                    assert!($ff::zero() != $ff::one());
+                }
+
+                #[test]
                 fn char_is_prime() {
                     const ROUNDS: usize = 1000;
                     let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(42);

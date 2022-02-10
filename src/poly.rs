@@ -2,7 +2,7 @@ use std::{collections::HashMap, iter::FromIterator};
 
 use num::Integer;
 
-use crate::fields::Field;
+use crate::{fields::Field, rings::Ring};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,7 +12,7 @@ pub struct DensePolynomial<F> {
 
 impl<F> DensePolynomial<F>
 where
-    F: Field,
+    F: Ring,
 {
     pub fn new(it: impl IntoIterator<Item = F>) -> Self {
         let mut coeff: Vec<_> = it.into_iter().collect();
@@ -152,7 +152,12 @@ where
 
         Self::new(res)
     }
+}
 
+impl<F> DensePolynomial<F>
+where
+    F: Field,
+{
     pub fn div_quotient_rem(&self, divisor: &DensePolynomial<F>) -> (Self, Self) {
         if divisor.is_zero() {
             panic!("Cannot reduce by the zero polynomial");
@@ -190,7 +195,7 @@ where
 
 impl<F> fmt::Display for DensePolynomial<F>
 where
-    F: Field + fmt::Display,
+    F: Ring + fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_zero() {

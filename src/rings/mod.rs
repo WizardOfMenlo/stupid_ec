@@ -100,9 +100,6 @@ macro_rules! ring_tests {
                 fn obvious_things() {
                     assert!($rr::zero().is_zero());
                     assert!($rr::one().is_one());
-                    assert!(!$rr::zero().is_one());
-                    assert!(!$rr::one().is_zero());
-                    assert!($rr::zero() != $rr::one());
                     assert_eq!($rr::integer_embed(0), $rr::zero());
                     assert_eq!($rr::integer_embed(1), $rr::one());
                 }
