@@ -29,3 +29,8 @@ pub(super) fn sub_self<const L: usize>(x: &mut [u64; L], y: &[u64; L]) -> bool {
     }
     borrow
 }
+
+
+pub(super) fn mul<const L: usize>(x: &[u64; L], y: &[u64; L], z: &mut [u64; L + 1]) -> bool {
+    false
+}

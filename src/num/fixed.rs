@@ -34,69 +34,77 @@ impl<const LIMBS: usize> FixedInteger<LIMBS> {
         }
         FixedInteger(arr)
     }
+
+    pub fn add_with_carry(&self, rhs: &Self) -> (Self, bool) {
+        let mut arr = [0x0; LIMBS];
+        let carry = ops::add(&self.0, &rhs.0, &mut arr);
+        (FixedInteger(arr), carry)
+    }
+
+    pub fn add_self_with_carry(&mut self, rhs: &Self) -> bool {
+        ops::add_self(&mut self.0, &rhs.0)
+    }
+    
+    pub fn sub_with_borrow(&self, rhs: &Self) -> (Self, bool) {
+        let mut arr = [0x0; LIMBS];
+        let borrow = ops::sub(&self.0, &rhs.0, &mut arr);
+        (FixedInteger(arr), borrow)
+    }
+
+    pub fn sub_self_with_borrow(&mut self, rhs: &Self) -> bool {
+        ops::sub_self(&mut self.0, &rhs.0)
+    }
 }
 
 impl<const LIMBS: usize> std::ops::AddAssign for FixedInteger<LIMBS> {
     fn add_assign(&mut self, rhs: Self) {
-        // We discard the carry
-        ops::add_self(&mut self.0, &rhs.0);
+        self.add_self_with_carry(&rhs);
     }
 }
 
 impl<'a, const LIMBS: usize> std::ops::AddAssign<&'a Self> for FixedInteger<LIMBS> {
     fn add_assign(&mut self, rhs: &Self) {
-        // We discard the carry
-        ops::add_self(&mut self.0, &rhs.0);
+        self.add_self_with_carry(&rhs);
     }
 }
 
 impl<const LIMBS: usize> std::ops::Add for FixedInteger<LIMBS> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self{
-        let mut arr = [0x0; LIMBS];
-        ops::add(&self.0, &rhs.0, &mut arr);
-        FixedInteger(arr)
+        self.add_with_carry(&rhs).0
     }
 }
 
 impl<'a, const LIMBS: usize> std::ops::Add<&'a Self> for FixedInteger<LIMBS> {
     type Output = Self;
     fn add(self, rhs: &Self) -> Self {
-        let mut arr = [0x0; LIMBS];
-        ops::add(&self.0, &rhs.0, &mut arr);
-        FixedInteger(arr)
+        self.add_with_carry(&rhs).0
     }
 }
 
 impl<const LIMBS: usize> std::ops::SubAssign for FixedInteger<LIMBS> {
     fn sub_assign(&mut self, rhs: Self) {
-        // We discard the carry
-        ops::sub_self(&mut self.0, &rhs.0);
+        self.sub_self_with_borrow(&rhs);
     }
 }
 
 impl<'a, const LIMBS: usize> std::ops::SubAssign<&'a Self> for FixedInteger<LIMBS> {
     fn sub_assign(&mut self, rhs: &Self) {
-        // We discard the carry
-        ops::sub_self(&mut self.0, &rhs.0);
+        self.sub_self_with_borrow(rhs);
     }
 }
 
 impl<const LIMBS: usize>  std::ops::Sub for FixedInteger<LIMBS> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        let mut arr = [0x0; LIMBS];
-        ops::sub(&self.0, &rhs.0, &mut arr);
-        FixedInteger(arr)
+        self.sub_with_borrow(&rhs).0
     }
 }
 
 impl<'a, const LIMBS: usize> std::ops::Sub<&'a Self> for FixedInteger<LIMBS> {
     type Output = Self;
     fn sub(self, rhs: &Self) -> Self {
-        let mut arr = [0x0; LIMBS];
-        ops::sub(&self.0, &rhs.0, &mut arr);
-        FixedInteger(arr)
+        self.sub_with_borrow(&rhs).0
     }
 }
 

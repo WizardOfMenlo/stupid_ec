@@ -1,4 +1,5 @@
 #![feature(bigint_helper_methods)]
+#![feature(generic_const_exprs)]
 
 pub(crate) mod double_and_add;
 pub mod ec;
